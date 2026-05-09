@@ -23,6 +23,7 @@ namespace Loupedeck.DemoPlugin
         // This method is called when the plugin is loaded.
         public override void Load()
         {
+            LiveInfoIconMapper.StartWatching();
             CountdownSignalListener.Start();
         }
 

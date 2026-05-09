@@ -11,20 +11,41 @@ import keyboard
 import whisper # 🌟 引入 Whisper
 from openai import OpenAI
 
+from openai_key_util import load_openai_api_key
+
 # ==========================================
-# ⚙️ 1. 設定 OpenAI API
+# ⚙️ 1. 設定 OpenAI API（OPENAI_API_KEY 環境變數，或專案根目錄 .env）
 # ==========================================
-API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+BASE_DIR = Path(__file__).resolve().parent
+API_KEY = load_openai_api_key(base_dir=BASE_DIR).strip()
 MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 if not API_KEY:
-    print("\n[錯誤] 請先設定環境變數 OPENAI_API_KEY")
+    print("\n[錯誤] 請設定 OPENAI_API_KEY（環境變數）或在專案根目錄建立 .env")
     sys.exit(1)
 openai_client = OpenAI(api_key=API_KEY)
-BASE_DIR = Path(__file__).resolve().parent
 PIPELINE_JSON_PATH = BASE_DIR / "pipeline_payload.json"
 CLASSIFIER_SCRIPT_PATH = BASE_DIR / "message_classifier.py"
 OPENAI_TIMEOUT_SECONDS = 12
 CLASSIFIER_TIMEOUT_SECONDS = 8
+IMAGES_ROOT = BASE_DIR / "DemoPlugin" / "DemoPlugin" / "images"
+CHARACTERS_DIR = IMAGES_ROOT / "characters"
+SKILLS_DIR = IMAGES_ROOT / "skills"
+
+
+def _list_png_stems(folder: Path):
+    if not folder.exists():
+        return []
+    stems = []
+    for p in folder.iterdir():
+        if p.is_file() and p.suffix.lower() == ".png":
+            stems.append(p.stem.strip())
+    return sorted(set(s for s in stems if s))
+
+
+CHARACTER_NAME_LIST = _list_png_stems(CHARACTERS_DIR)
+SKILL_NAME_LIST = _list_png_stems(SKILLS_DIR)
+CHARACTER_NAMES_PROMPT = "、".join(CHARACTER_NAME_LIST) if CHARACTER_NAME_LIST else "（未偵測到角色圖檔）"
+SKILL_NAMES_PROMPT = "、".join(SKILL_NAME_LIST) if SKILL_NAME_LIST else "（未偵測到技能圖檔）"
 
 def rewrite_with_llm(raw_text):
     prompt = f"""
@@ -78,18 +99,110 @@ def _extract_json_object(text):
     return text[start : end + 1]
 
 
+def _extract_json_blob(text):
+    """Extract first JSON blob (object or array) from model output."""
+    text = text.strip()
+    fence = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
+    if fence:
+        text = fence.group(1).strip()
+
+    # Prefer array if present and wraps objects.
+    arr_start = text.find("[")
+    arr_end = text.rfind("]")
+    obj_start = text.find("{")
+    obj_end = text.rfind("}")
+
+    if arr_start != -1 and arr_end != -1 and arr_end > arr_start:
+        return text[arr_start : arr_end + 1]
+    if obj_start != -1 and obj_end != -1 and obj_end > obj_start:
+        return text[obj_start : obj_end + 1]
+    return None
+
+
+def _normalize_payloads(data):
+    """
+    Accept either one object or a list of objects.
+    Returns non-empty list of validated payload dicts.
+    """
+    items = data if isinstance(data, list) else [data]
+    normalized = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        kind = str(item.get("kind", "")).strip().lower()
+        target = str(item.get("target", "")).strip()
+        slang = str(item.get("lol_slang_line", "")).strip()
+        if kind not in ("chat", "status_report"):
+            continue
+        if not slang:
+            continue
+        normalized.append(
+            {
+                "kind": kind,
+                "target": target,
+                "lol_slang_line": slang,
+            }
+        )
+    return normalized
+
+
+def _keep_chinese_text(text: str) -> str:
+    """Keep only Chinese chars and common Chinese punctuation/spaces."""
+    if not text:
+        return ""
+    filtered = re.sub(r"[^\u4e00-\u9fff\u3000-\u303f\uff00-\uffef\s]", "", text)
+    filtered = re.sub(r"\s+", "", filtered).strip()
+    return filtered
+
+
+def _normalize_to_chinese_text(text: str) -> str:
+    """
+    Keep existing Chinese as-is, and translate only non-Chinese parts into Chinese.
+    Always run this step regardless of Chinese ratio.
+    """
+    src = (text or "").strip()
+    if not src:
+        return ""
+
+    prompt = f"""
+你是繁體中文電競語音校正助手。請把句子中的「非中文片段」翻譯成繁體中文，
+但原本已經是中文的內容請盡量保留原意，不要亂改。
+可修正常見語音辨識錯字。
+只輸出最終句子，不要解釋。
+
+輸入：
+{src}
+"""
+    try:
+        response = openai_client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=80,
+            temperature=0.1,
+            timeout=OPENAI_TIMEOUT_SECONDS,
+        )
+        translated = (response.choices[0].message.content or "").strip()
+        return _keep_chinese_text(translated)
+    except Exception:
+        # If translation fails, keep best-effort Chinese extraction.
+        return _keep_chinese_text(src)
+
+
 def analyze_voice_to_structured_json(raw_text):
     """
-    將語音轉成固定結構的 JSON（dict）：
+    將語音轉成固定結構的 JSON（dict 或 list[dict]）：
     - 訊息種類、對象、台服極簡術語行
     只輸出 JSON，無其他文字。
     """
     prompt = f"""
-你是台灣《英雄聯盟》(LOL) 高端玩家與通訊分類器。請根據「使用者語音轉寫」產出**一個** JSON 物件。
+你是台灣《英雄聯盟》(LOL) 高端玩家與通訊分類器。
+請根據「使用者語音轉寫」判斷是單一事件還是多個事件：
+- 單一事件：輸出一個 JSON 物件
+- 多個事件：輸出 JSON 陣列，每個元素一個事件
 
 【輸出規則】
 1. 只輸出 JSON，不要 markdown、不要說明、不要前後文字。
-2. 必須包含鍵：kind, target, lol_slang_line。
+2. 每個事件必須包含鍵：kind, target, lol_slang_line。
 3. 欄位：
    - kind：chat | status_report
    - target：這句話的主要目標（英雄/玩家/路線/物件），例如「阿璃」；若無明確目標請填空字串
@@ -111,17 +224,12 @@ def analyze_voice_to_structured_json(raw_text):
        "target": "阿卡麗",
        "lol_slang_line": "阿卡麗在上草"
    }}
-6. 所有英雄名稱：（請只傳送中文名稱）
-    1. 蓋倫 Garen
-    2. 安妮 Annie
-    3. 好運姐 Miss Fortune
-    4. 阿姆姆 Amumu
-    5. 雷歐娜 Leona
-    6. 墨菲特 Malphite
-    7. 馬爾札哈 Malzahar
-    8. 艾希 Ashe
-    9. 沃維克 Warwick
-    10. 索娜 Sona
+
+6. 可用英雄名稱（優先使用以下中文名稱，避免拼音/英文）：
+   {CHARACTER_NAMES_PROMPT}
+7. 可用技能名稱（優先使用以下名稱做糾錯與歸一化）：
+   {SKILL_NAMES_PROMPT}
+
 使用者語音轉寫：
 「{raw_text}」
 """
@@ -137,54 +245,51 @@ def analyze_voice_to_structured_json(raw_text):
         )
         print(f"  [Pipeline] OpenAI 完成，耗時 {time.time() - t0:.2f}s")
         raw = (response.choices[0].message.content or "").strip()
-        blob = _extract_json_object(raw)
+        blob = _extract_json_blob(raw)
         if not blob:
             raise ValueError("無法從模型回覆中擷取 JSON")
         data = json.loads(blob)
-        if not isinstance(data, dict):
-            raise ValueError("根節點必須為物件")
-        # for key in ("message"):
-        #     if key not in data:
-        #         raise ValueError(f"缺少鍵: {key}")
-        # if "lol_slang_line" not in data.get("message", {}):
-        #     raise ValueError("message 缺少 lol_slang_line")
-        # if "target" not in data.get("message", {}):
-        #     raise ValueError("message 缺少 target")
-        return data
+        payloads = _normalize_payloads(data)
+        if not payloads:
+            raise ValueError("JSON 內容沒有有效事件")
+        return payloads
     except Exception as e:
         print(f"\n[結構化 JSON 失敗，改用純文字後備] {e}")
         slang = rewrite_with_llm(raw_text)
-        return {
-            "kind": "chat",
-            "target": "",
-            "lol_slang_line": slang,
-        }
+        return [
+            {
+                "kind": "chat",
+                "target": "",
+                "lol_slang_line": slang,
+            }
+        ]
 
 
-def run_message_pipeline(payload):
-    """Save JSON payload and run message_classifier.py."""
-    PIPELINE_JSON_PATH.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    print(f"  [Pipeline] JSON 已寫入：{PIPELINE_JSON_PATH}")
+def run_message_pipeline(payloads):
+    """Save each payload and run message_classifier.py one by one."""
+    for idx, payload in enumerate(payloads, start=1):
+        PIPELINE_JSON_PATH.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        print(f"  [Pipeline] JSON({idx}/{len(payloads)}) 已寫入：{PIPELINE_JSON_PATH}")
 
-    print("  [Pipeline] 執行 message_classifier.py...")
-    t0 = time.time()
-    result = subprocess.run(
-        [sys.executable, str(CLASSIFIER_SCRIPT_PATH), str(PIPELINE_JSON_PATH)],
-        capture_output=True,
-        text=True,
-        timeout=CLASSIFIER_TIMEOUT_SECONDS,
-    )
-    print(f"  [Pipeline] classifier 完成，耗時 {time.time() - t0:.2f}s")
+        print(f"  [Pipeline] 執行 message_classifier.py ({idx}/{len(payloads)})...")
+        t0 = time.time()
+        result = subprocess.run(
+            [sys.executable, str(CLASSIFIER_SCRIPT_PATH), str(PIPELINE_JSON_PATH)],
+            capture_output=True,
+            text=True,
+            timeout=CLASSIFIER_TIMEOUT_SECONDS,
+        )
+        print(f"  [Pipeline] classifier 完成，耗時 {time.time() - t0:.2f}s")
 
-    if result.stdout.strip():
-        print(result.stdout.strip())
-    if result.returncode != 0:
-        if result.stderr.strip():
-            print(result.stderr.strip())
-        raise RuntimeError(f"message_classifier.py failed with exit code {result.returncode}")
+        if result.stdout.strip():
+            print(result.stdout.strip())
+        if result.returncode != 0:
+            if result.stderr.strip():
+                print(result.stderr.strip())
+            raise RuntimeError(f"message_classifier.py failed with exit code {result.returncode}")
 
 # ==========================================
 # ⚙️ 2. 初始化 Whisper 語音模型
@@ -249,7 +354,8 @@ try:
                     # 呼叫 Whisper 進行辨識
                     # fp16=False 是為了解決某些沒有高階 GPU 的電腦會報錯的問題
                     result = whisper_model.transcribe(audio_np, language="zh", fp16=False)
-                    text = result["text"].replace(" ", "").strip()
+                    raw_text = (result.get("text") or "").strip()
+                    text = _normalize_to_chinese_text(raw_text)
                     
                     if text:
                         print(f"[Whisper 聽到]：{text}")
@@ -270,13 +376,12 @@ try:
                         
                         # 步驟三：無論有沒有發燈號，都繼續呼叫 AI 產生結構化 JSON + 術語行
                         print("  [模式 B] 呼叫 AI 產生結構化 JSON...")
-                        payload = analyze_voice_to_structured_json(text)
+                        payloads = analyze_voice_to_structured_json(text)
                         print("  [結構化 JSON]：")
-                        print(json.dumps(payload, ensure_ascii=False, indent=2))
-
-                        run_message_pipeline(payload)
+                        print(json.dumps(payloads, ensure_ascii=False, indent=2))
+                        run_message_pipeline(payloads)
                     else:
-                        print("⚠️ Whisper 沒有辨識到有效文字。")
+                        print("⚠️ Whisper 未辨識到中文內容，已忽略。")
                 else:
                     print("⚠️ 錄音太短，已忽略。")
             else:
