@@ -13,7 +13,7 @@ from pathlib import Path
 
 def _normalize_api_key(raw: str) -> str:
     """Strip whitespace, BOM artifacts, CRLF, and matching outer quotes (common .env mistakes)."""
-    s = raw.replace("\r", "").strip()
+    s = raw.replace("\r", "").replace("\u200b", "").replace("\u2060", "").strip()
     if s.startswith("\ufeff"):
         s = s.lstrip("\ufeff")
     prev = None

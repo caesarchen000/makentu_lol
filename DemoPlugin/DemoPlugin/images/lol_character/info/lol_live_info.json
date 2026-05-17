@@ -1,68 +1,67 @@
 {
-    "status": "Fallback Test Data",
+    "status": "In Game",
     "myTeam": [
         {
             "isMe": true,
-            "champion": "雷茲",
-            "spell1": "閃現",
-            "spell2": "光盾"
-        },
-        {
-            "isMe": false,
-            "champion": "銳兒",
-            "spell1": "重擊",
-            "spell2": "鬼步"
-        },
-        {
-            "isMe": false,
-            "champion": "希格斯",
-            "spell1": "閃現",
+            "champion": "菲艾",
+            "spell1": "鬼步",
             "spell2": "治療"
         },
         {
             "isMe": false,
-            "champion": "科加斯",
-            "spell1": "治療",
-            "spell2": "閃現"
+            "champion": "提摩",
+            "spell1": "閃現",
+            "spell2": "重擊"
         },
         {
             "isMe": false,
-            "champion": "藍寶",
-            "spell1": "虛弱",
-            "spell2": "閃現"
-        }
-    ],
-    "theirTeam": [
-        {
-            "isMe": false,
-            "champion": "埃爾文",
-            "spell1": "傳送",
-            "spell2": "治療"
-        },
-        {
-            "isMe": false,
-            "champion": "拉克絲",
+            "champion": "凱莎",
             "spell1": "光盾",
             "spell2": "閃現"
         },
         {
             "isMe": false,
-            "champion": "塔里克",
+            "champion": "悟空",
             "spell1": "閃現",
-            "spell2": "虛弱"
+            "spell2": "點燃"
         },
         {
             "isMe": false,
-            "champion": "銳空",
-            "spell1": "點燃",
+            "champion": "亞歷斯塔",
+            "spell1": "閃現",
+            "spell2": "點燃"
+        }
+    ],
+    "theirTeam": [
+        {
+            "isMe": false,
+            "champion": "尤娜拉",
+            "spell1": "光盾",
+            "spell2": "閃現"
+        },
+        {
+            "isMe": false,
+            "champion": "凱爾",
+            "spell1": "閃現",
+            "spell2": "傳送"
+        },
+        {
+            "isMe": false,
+            "champion": "納瑟斯",
+            "spell1": "閃現",
             "spell2": "重擊"
         },
         {
             "isMe": false,
-            "champion": "史瓦妮",
-            "spell1": "虛弱",
-            "spell2": "閃現"
+            "champion": "卡莎碧雅",
+            "spell1": "閃現",
+            "spell2": "點燃"
+        },
+        {
+            "isMe": false,
+            "champion": "珍娜",
+            "spell1": "閃現",
+            "spell2": "治療"
         }
-
     ]
 }

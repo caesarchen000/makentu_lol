@@ -36,6 +36,9 @@ namespace Loupedeck.DemoPlugin
         /// <summary>Fired when any skill on this timer slot changes.</summary>
         public static event Action<Int32> StateChanged;
 
+        /// <summary>Fired once when a countdown reaches zero (after tracking that spell cooldown).</summary>
+        public static event Action<Int32, CountdownSkill> CooldownEnded;
+
         public static void StartCountdown(Int32 timerId, CountdownSkill skill)
         {
             var (ti, sk) = Validate(timerId, skill);
@@ -61,6 +64,7 @@ namespace Loupedeck.DemoPlugin
         private static void OnTimerElapsed(Int32 timerId, CountdownSkill skill)
         {
             var (ti, sk) = Validate(timerId, skill);
+            var finished = false;
             lock (LockObject)
             {
                 if (!IsRunning[ti, sk])
@@ -74,10 +78,15 @@ namespace Loupedeck.DemoPlugin
                     RemainingSeconds[ti, sk] = 0;
                     IsRunning[ti, sk] = false;
                     Timers[ti, sk].Stop();
+                    finished = true;
                 }
             }
 
             RaiseStateChanged(timerId);
+            if (finished)
+            {
+                CooldownEnded?.Invoke(timerId, skill);
+            }
         }
 
         private static (Int32 Ti, Int32 Sk) Validate(Int32 timerId, CountdownSkill skill)

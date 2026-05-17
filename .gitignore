@@ -3,3 +3,7 @@ __pycache__/
 *.py[cod]
 *.pyc
 .env
+
+# Runtime scratch — recreated by tactical_client_cloud / test_voice_all_whisper
+pipeline_payload.json
+.tactical_client.pid

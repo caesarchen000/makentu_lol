@@ -24,6 +24,7 @@ namespace Loupedeck.DemoPlugin
         public override void Load()
         {
             LiveInfoIconMapper.StartWatching();
+            CooldownEndOverlayNotifier.Initialize();
             CountdownSignalListener.Start();
         }
 

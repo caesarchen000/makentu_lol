@@ -26,9 +26,13 @@ while True:
         data, addr = sock.recvfrom(8192)
 
         # 1. 處理註冊封包 (例如收到 b'HELLO:MID')
+        #    同一個 UDP 端點若改身分，先移除舊 role，避免密語路由仍指向過時鍵
         if data.startswith(b'HELLO:'):
             role = data.split(b':')[1].decode('utf-8').strip()
             with clients_lock:
+                old_role = addr_to_role.get(addr)
+                if old_role is not None and old_role != role:
+                    clients.pop(old_role, None)
                 clients[role] = addr
                 addr_to_role[addr] = role
                 online = list(clients.keys())
@@ -61,14 +65,15 @@ while True:
                     print(f"📨 [{sender_role}] 發送指令: {cmd_text[:80]}...")
                 last_print_time[print_key] = now
 
-            # Broadcast to ALL clients (snapshot the dict to avoid race conditions)
+            # Broadcast to all OTHER clients (skip sender to avoid echo/double-countdown).
             with clients_lock:
                 targets = dict(clients)
             for role, client_addr in targets.items():
-                try:
-                    sock.sendto(data, client_addr)
-                except Exception:
-                    pass
+                if client_addr != addr:
+                    try:
+                        sock.sendto(data, client_addr)
+                    except Exception:
+                        pass
             continue
 
         # 3. 解析語音封包標頭 (前 4 Bytes 是目標)

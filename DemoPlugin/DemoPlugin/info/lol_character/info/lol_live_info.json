@@ -1,0 +1,77 @@
+{
+    "status": "In Game",
+    "myTeam": [
+        {
+            "isMe": true,
+            "champion": "拉姆斯",
+            "spell1": "鬼步",
+            "spell2": "治療",
+            "position": "BOTTOM"
+        },
+        {
+            "isMe": false,
+            "champion": "菲艾",
+            "spell1": "鬼步",
+            "spell2": "重擊",
+            "position": "JUNGLE"
+        },
+        {
+            "isMe": false,
+            "champion": "卡莎碧雅",
+            "spell1": "光盾",
+            "spell2": "閃現",
+            "position": "BOTTOM"
+        },
+        {
+            "isMe": false,
+            "champion": "提摩",
+            "spell1": "閃現",
+            "spell2": "重擊",
+            "position": "JUNGLE"
+        },
+        {
+            "isMe": false,
+            "champion": "史瓦妮",
+            "spell1": "點燃",
+            "spell2": "傳送",
+            "position": "TOP"
+        }
+    ],
+    "theirTeam": [
+        {
+            "isMe": false,
+            "champion": "薇可絲",
+            "spell1": "閃現",
+            "spell2": "傳送",
+            "position": "MIDDLE"
+        },
+        {
+            "isMe": false,
+            "champion": "悟空",
+            "spell1": "閃現",
+            "spell2": "重擊",
+            "position": "JUNGLE"
+        },
+        {
+            "isMe": false,
+            "champion": "索拉卡",
+            "spell1": "閃現",
+            "spell2": "治療",
+            "position": "UTILITY"
+        },
+        {
+            "isMe": false,
+            "champion": "凱爾",
+            "spell1": "閃現",
+            "spell2": "傳送",
+            "position": "TOP"
+        },
+        {
+            "isMe": false,
+            "champion": "汎",
+            "spell1": "光盾",
+            "spell2": "閃現",
+            "position": "BOTTOM"
+        }
+    ]
+}

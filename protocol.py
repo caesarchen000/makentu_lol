@@ -26,7 +26,8 @@ from __future__ import annotations
 
 TARGET_LENGTH = 4  # bytes for audio routing header
 
-# ── All known roles ──────────────────────────────────────────────
+# ── Lane routing roles (first 4 bytes of mic UDP header; whisper targets) ──
+# tactical_client_cloud HELLO may use a provisional Zxxxxxxxx id until Live sync.
 ALL_ROLES = ("MID", "JG", "TOP", "BOT", "SUP")
 
 # ── Hero list (matches CountdownTimerCommand order) ──────────────

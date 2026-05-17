@@ -98,7 +98,8 @@ namespace Loupedeck.DemoPlugin
                 return;
             }
 
-            CountdownState.StartCountdown(this._timerId, CountdownSkill.Flash);
+            // Enemy timers 1–5: physical press does not start countdown (UDP / pipeline only).
+            return;
         }
 
         protected override String GetCommandDisplayName(String actionParameter, PluginImageSize imageSize)
@@ -115,6 +116,23 @@ namespace Loupedeck.DemoPlugin
             if (TryGetAllySlot(this._timerId, out var allySlot))
             {
                 allyChannelActive = AllyChannelState.IsTargeted(allySlot);
+            }
+
+            // Idle black tiles only when there is no active countdown, no corner-signal UI on T1,
+            // and no ally PTT highlight — otherwise compose so UDP/status overlays stay visible.
+            var countdownActive = fRun || tRun;
+            var signalUiActive = this._timerId == 1 && overlayKey != "idle";
+            var allyHighlight = allyChannelActive == true;
+            if (!LiveInfoIconMapper.TryIsGameUiReady()
+                && !countdownActive
+                && !signalUiActive
+                && !allyHighlight)
+            {
+                var black = PlaceholderBitmaps.TryBlack100();
+                if (black != null)
+                {
+                    return black;
+                }
             }
 
             var characterBytes = this._characterImageBytes;

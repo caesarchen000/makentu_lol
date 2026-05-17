@@ -1,8 +1,8 @@
 {
-  "server_ip": "172.20.10.2",
+  "server_ip": "10.10.31.138",
   "server_port": 5005,
-  "my_role": "MID",
-  "my_hero": "安妮",
+  "my_role": "BOT",
+  "my_hero": "拉姆斯",
   "allies": [
     "JG",
     "TOP",
@@ -10,14 +10,23 @@
     "SUP"
   ],
   "enemies": [
-    "蓋倫",
-    "好運姐",
-    "阿姆姆",
-    "雷歐娜",
-    "艾希"
+    "薇可絲",
+    "悟空",
+    "索拉卡",
+    "凱爾",
+    "汎"
   ],
   "obs_host": "localhost",
   "obs_port": 4455,
-  "obs_password": "9ECzI8cnMbWWjLx9",
-  "video_save_dir": "D:/obs-studio/video"
+  "obs_password": "WNokV76EcJbNK26I",
+  "video_save_dir": "D:/obs-studio/video",
+  "pip_overlay_host": "127.0.0.1",
+  "pip_overlay_udp_port": 5011,
+  "pip_overlay_whisper": true,
+  "pip_overlay_autostart": true,
+  "pip_overlay_width": 300,
+  "pip_overlay_height": 130,
+  "pip_overlay_x": 35,
+  "pip_overlay_y": 370,
+  "pip_overlay_idle_seconds": 5
 }

@@ -1,15 +1,9 @@
 """
-tactical_ui.py — Desktop UI for the LOL tactical voice system.
+tactical_ui.py — Desktop UI launcher for the tactical voice client.
 
-Screens:
-  0. Home: main menu → Start / Feature intro
-  1. Connect: enter RPi server IP → connect
-  2. Pick Role: choose MID/JG/TOP/BOT/SUP (darkens on selection)
-  3. Pick My Hero: choose your own champion
-  4. Pick Enemy Heroes: 5 slots for enemy champions
-  5. Dashboard: status overview + system log
+Screens: Home → Connect (RPi IP/port) → OBS settings → writes tactical_config.json
+and starts tactical_client_cloud.py (optional Intro).
 
-After setup, writes tactical_config.json and launches tactical_client_cloud.py.
 Can be compiled to .exe with: pyinstaller --onefile --windowed tactical_ui.py
 """
 
@@ -56,22 +50,26 @@ signal.signal(signal.SIGTERM, _signal_handler)
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "tactical_config.json"
 
-ALL_ROLES = ["MID", "JG", "TOP", "BOT", "SUP"]
-ALL_HEROES = [
-    "蓋倫", "安妮", "好運姐", "阿姆姆", "雷歐娜",
-    "墨菲特", "馬爾札哈", "艾希", "沃維克", "索娜",
-]
+# PiP overlay — must stay aligned with tactical_client_cloud.load_config_or_exit optional keys.
+_DEFAULT_PIP_OVERLAY = {
+    "pip_overlay_host": "127.0.0.1",
+    "pip_overlay_udp_port": 5011,
+    "pip_overlay_whisper": True,
+    "pip_overlay_autostart": True,
+    "pip_overlay_width": 300,
+    "pip_overlay_height": 130,
+    "pip_overlay_x": 35,
+    "pip_overlay_y": 370,
+    "pip_overlay_idle_seconds": 5,
+}
 
 # ── Shared state ────────────────────────────────────────────────
-selected_role = None
-selected_my_hero = None
-server_ip = "172.20.10.2"
+server_ip = "10.10.31.138"
 server_port = 5005
-enemy_selections = [""] * 5   # 5 enemy hero slots
 
 obs_host = "localhost"
 obs_port = "4455"
-obs_password = "9ECzI8cnMbWWjLx9"
+obs_password = "WNokV76EcJbNK26I"
 video_save_dir = "D:/obs-studio/video"
 
 
@@ -351,14 +349,15 @@ class ObsScreen(tk.Frame):
         config = {
             "server_ip": server_ip,
             "server_port": server_port,
-            "my_role": "MID",
+            "my_role": "PEND",
             "my_hero": "安妮",
             "allies": ["JG", "TOP", "BOT", "SUP"],
             "enemies": ["蓋倫", "好運姐", "阿姆姆", "雷歐娜", "艾希"],
             "obs_host": obs_host,
             "obs_port": int(obs_port),
             "obs_password": obs_password,
-            "video_save_dir": video_save_dir
+            "video_save_dir": video_save_dir,
+            **_DEFAULT_PIP_OVERLAY,
         }
         CONFIG_PATH.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"Config saved to {CONFIG_PATH}")

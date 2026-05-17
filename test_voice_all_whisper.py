@@ -13,14 +13,19 @@ from openai import OpenAI
 
 from openai_key_util import load_openai_api_key
 
-# ==========================================
-# ⚙️ 1. 設定 OpenAI API（OPENAI_API_KEY 環境變數，或專案根目錄 .env）
-# ==========================================
 BASE_DIR = Path(__file__).resolve().parent
-API_KEY = load_openai_api_key(base_dir=BASE_DIR).strip()
+
+# ==========================================
+# ⚙️ 1. 設定 OpenAI API（環境變數或 BASE_DIR /.env）
+# ==========================================
+API_KEY = load_openai_api_key(base_dir=BASE_DIR)
 MODEL_NAME = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 if not API_KEY:
-    print("\n[錯誤] 請設定 OPENAI_API_KEY（環境變數）或在專案根目錄建立 .env")
+    print("\n[錯誤] 找不到有效的 OPENAI_API_KEY。")
+    print("  • 環境變數（不要加引號）：  set OPENAI_API_KEY=sk-...")
+    print("  • 或於此處新增 .env 一行（值不要加引號）：")
+    print(f"      {BASE_DIR / '.env'}")
+    print('      OPENAI_API_KEY=sk-...')
     sys.exit(1)
 openai_client = OpenAI(api_key=API_KEY)
 PIPELINE_JSON_PATH = BASE_DIR / "pipeline_payload.json"
